@@ -1,21 +1,25 @@
 {
-  "mode": "All",
-  "policyRule": {
-    "if": {
-      "allOf": [
-        {
-          "field": "type",
-          "equals": "Microsoft.Storage/storageAccounts"
-        },
-        {
-          "field": "Microsoft.Storage/storageAccounts/supportsHttpsTrafficOnly",
-          "equals": "false"
-        }
-      ]
-    },
-    "then": {
-      "effect": "deny"
+  "properties": {
+    "displayName": "Enforce HTTPS traffic on Storage Accounts",
+    "policyType": "BuiltIn",
+    "mode": "All",
+    "description": "This policy enforces that 'Secure transfer required' is enabled on storage accounts.",
+    "policyRule": {
+      "if": {
+        "allOf": [
+          {
+            "field": "type",
+            "equals": "Microsoft.Storage/storageAccounts"
+          },
+          {
+            "field": "Microsoft.Storage/storageAccounts/supportsHttpsTrafficOnly",
+            "equals": "false"
+          }
+        ]
+      },
+      "then": {
+        "effect": "deny"
+      }
     }
-  },
-  "parameters": {}
+  }
 }
