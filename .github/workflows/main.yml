@@ -10,10 +10,10 @@ env:
   LOCATION: 'EastUS'
   # These are placeholders for now. The Bicep deployment will create the resources.
   # We will fill these in after the first successful infrastructure deployment.
-  FUNCTION_APP_NAME: 'YOUR_FUNCTION_APP_NAME'
+  FUNCTION_APP_NAME: 'resume4kx33andhgam6-func'
   STORAGE_ACCOUNT_NAME: 'bicepdemo4kx33andhgam6'
-  CDN_PROFILE_NAME: 'YOUR_CDN_PROFILE_NAME'
-  CDN_ENDPOINT_NAME: 'YOUR_CDN_ENDPOINT_NAME'
+  #CDN_PROFILE_NAME: 'YOUR_CDN_PROFILE_NAME'
+  #CDN_ENDPOINT_NAME: 'YOUR_CDN_ENDPOINT_NAME'
 
 
 jobs:
