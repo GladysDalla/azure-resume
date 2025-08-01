@@ -148,6 +148,10 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
           name: 'FUNCTIONS_WORKER_RUNTIME'
           value: 'python'
         }
+        {
+          name: 'PYTHON_ISOLATE_WORKER_DEPENDENCIES'
+          value: '1'
+        }
         // Instead of a connection string, we provide the Cosmos DB endpoint.
         // The function will use its Managed Identity for authentication.
         /*
