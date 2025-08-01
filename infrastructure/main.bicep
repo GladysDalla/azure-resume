@@ -25,10 +25,10 @@ param storageAccountName string
 
 var appServicePlanName = '${projectName}-plan'
 var functionAppName = '${projectName}-func'
-var cosmosAccountName = '${projectName}-db'
-var cdnProfileName = '${projectName}-cdn'
-var cdnEndpointName = projectName // CDN endpoints have different naming rules
-var cosmosDbRoleDefinitionId = '00000000-0000-0000-0000-000000000002' // Fixed Role ID for Cosmos DB Data Contributor
+//var cosmosAccountName = '${projectName}-db'
+//var cdnProfileName = '${projectName}-cdn'
+//var cdnEndpointName = projectName // CDN endpoints have different naming rules
+//var cosmosDbRoleDefinitionId = '00000000-0000-0000-0000-000000000002' // Fixed Role ID for Cosmos DB Data Contributor
 
 
 // === RESOURCES ===
@@ -177,6 +177,7 @@ resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   }
 }
 */
+/*
 @description('The CDN profile and endpoint to serve the website globally.')
 resource cdnProfile 'Microsoft.Cdn/profiles@2023-05-01' = {
   name: cdnProfileName
@@ -208,12 +209,12 @@ resource cdnEndpoint 'Microsoft.Cdn/profiles/endpoints@2023-05-01' = {
   }
 }
 
-
+*/
 // === OUTPUTS ===
 // These values are returned after deployment and can be used in our pipeline or for reference.
 
-@description('The hostname of the CDN endpoint. This is the public URL for your website.')
-output cdnEndpointHostname string = cdnEndpoint.properties.hostName
+//@description('The hostname of the CDN endpoint. This is the public URL for your website.')
+//output cdnEndpointHostname string = cdnEndpoint.properties.hostName
 
 @description('The name of the deployed Function App.')
 output functionAppName string = functionApp.name
