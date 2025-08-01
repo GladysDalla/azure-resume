@@ -48,7 +48,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
     allowBlobPublicAccess: true
   }
 }
-
+/*
 // --- 2. Azure Cosmos DB (Serverless) ---
 // The NoSQL database used to store the visitor counter.
 @description('Serverless Cosmos DB account for the visitor counter.')
@@ -100,7 +100,7 @@ resource cosmosContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/con
     }
   }
 }
-
+*/
 
 // --- 3. Backend Compute (Function App) ---
 // The serverless compute resources for our Python backend API.
@@ -161,7 +161,7 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
   }
 }
 
-
+/*
 // --- 4. Security & Delivery (RBAC & CDN) ---
 // These resources handle secure access and global content delivery.
 @description('Grants the Function Apps Managed Identity access to Cosmos DB.')
@@ -174,7 +174,7 @@ resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
     principalType: 'ServicePrincipal'
   }
 }
-
+*/
 @description('The CDN profile and endpoint to serve the website globally.')
 resource cdnProfile 'Microsoft.Cdn/profiles@2023-05-01' = {
   name: cdnProfileName
