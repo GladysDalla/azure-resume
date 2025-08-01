@@ -32,31 +32,24 @@ var cosmosDbRoleDefinitionId = '00000000-0000-0000-0000-000000000002' // Fixed R
 
 // === RESOURCES ===
 
-// --- 1. Storage Account ---
-// This account will host the static HTML/CSS/JS files for the resume website.
-// It is also used by the Azure Function for its operational needs.
+// Block 1: The Storage Account
 @description('The storage account to host the static website content.')
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   name: storageAccountName
   location: location
   sku: {
-    // Standard_LRS is the most cost-effective, standard storage.
     name: 'Standard_LRS'
   }
   kind: 'StorageV2'
   properties: {
-    // Enforces that all connections to this storage account are over HTTPS.
     supportsHttpsTrafficOnly: true
     accessTier: 'Hot'
-    // This must be true to host a public static website.
     allowBlobPublicAccess: true
   }
 }
 
-// *** FIX APPLIED HERE ***
-// This defines the blob service as a separate resource that depends on the storage account.
-// This is an alternative syntax that may resolve the linter issue in your VS Code environment.
-resource staticWebsite 'Microsoft.Storage/storageAccounts/blobServices@2023-01-01' = {
+// Block 2: The Static Website Settings for that Account
+resource staticWebsite 'Microsoft.Storage/storageAccounts/blobServices@2022-09-01' = {
   parent: storageAccount
   name: 'default'
   properties: {
@@ -67,6 +60,15 @@ resource staticWebsite 'Microsoft.Storage/storageAccounts/blobServices@2023-01-0
     }
   }
 }
+
+
+
+
+
+
+
+
+
 
 
 // --- 2. Azure Cosmos DB (Serverless) ---
