@@ -11,7 +11,7 @@ env:
   # These are placeholders for now. The Bicep deployment will create the resources.
   # We will fill these in after the first successful infrastructure deployment.
   FUNCTION_APP_NAME: 'YOUR_FUNCTION_APP_NAME'
-  STORAGE_ACCOUNT_NAME: 'YOUR_STORAGE_ACCOUNT_NAME'
+  STORAGE_ACCOUNT_NAME: 'bicepdemo4kx33andhgam6'
   CDN_PROFILE_NAME: 'YOUR_CDN_PROFILE_NAME'
   CDN_ENDPOINT_NAME: 'YOUR_CDN_ENDPOINT_NAME'
 
@@ -48,7 +48,16 @@ jobs:
         subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         resourceGroupName: ${{ env.RESOURCE_GROUP_NAME }}
         template: ./infrastructure/main.bicep
-        parameters: 'location=${{ env.LOCATION }}'
+        parameters: 'location=${{ env.LOCATION }} storageAccountName=${{ env.STORAGE_ACCOUNT_NAME }}'
+    - name: Enable Static Website Hosting
+      uses: azure/CLI@v1
+      with:
+        inlineScript: |
+          az storage blob service-properties update \
+            --account-name ${{ env.STORAGE_ACCOUNT_NAME }} \
+            --static-website \
+            --index-document index.html \
+            --404-document index.html
 
   deploy-app:
     name: Deploy Application Code

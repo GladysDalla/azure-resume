@@ -17,11 +17,12 @@ param projectName string = 'resume${uniqueString(resourceGroup().id)}'
 @description('The Azure region where the resources will be deployed.')
 param location string = resourceGroup().location
 
+@description('The globally unique name for the storage account.')
+param storageAccountName string 
 
 // === VARIABLES ===
 // These are internal values we construct for use within the template to keep names consistent.
 
-var storageAccountName = '${projectName}sa'
 var appServicePlanName = '${projectName}-plan'
 var functionAppName = '${projectName}-func'
 var cosmosAccountName = '${projectName}-db'
@@ -47,29 +48,6 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
     allowBlobPublicAccess: true
   }
 }
-
-// Block 2: The Static Website Settings for that Account
-resource staticWebsite 'Microsoft.Storage/storageAccounts/blobServices@2022-09-01' = {
-  parent: storageAccount
-  name: 'default'
-  properties: {
-    staticWebsite: {
-      enabled: true
-      indexDocument: 'index.html'
-      error404Document: 'index.html'
-    }
-  }
-}
-
-
-
-
-
-
-
-
-
-
 
 // --- 2. Azure Cosmos DB (Serverless) ---
 // The NoSQL database used to store the visitor counter.
