@@ -150,10 +150,12 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
         }
         // Instead of a connection string, we provide the Cosmos DB endpoint.
         // The function will use its Managed Identity for authentication.
+        /*
         {
           name: 'AzureResumeConnectionString'
           value: 'AccountEndpoint=${cosmosAccount.properties.documentEndpoint};'
         }
+          */
       ]
       ftpsState: 'FtpsOnly'
     }
