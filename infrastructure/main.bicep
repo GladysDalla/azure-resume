@@ -25,10 +25,10 @@ param storageAccountName string
 
 var appServicePlanName = '${projectName}-plan'
 var functionAppName = '${projectName}-func'
-//var cosmosAccountName = '${projectName}-db'
+var cosmosAccountName = '${projectName}-db'
 //var cdnProfileName = '${projectName}-cdn'
 //var cdnEndpointName = projectName // CDN endpoints have different naming rules
-//var cosmosDbRoleDefinitionId = '00000000-0000-0000-0000-000000000002' // Fixed Role ID for Cosmos DB Data Contributor
+var cosmosDbRoleDefinitionId = '00000000-0000-0000-0000-000000000002' // Fixed Role ID for Cosmos DB Data Contributor
 
 
 // === RESOURCES ===
@@ -48,7 +48,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
     allowBlobPublicAccess: true
   }
 }
-/*
+
 // --- 2. Azure Cosmos DB (Serverless) ---
 // The NoSQL database used to store the visitor counter.
 @description('Serverless Cosmos DB account for the visitor counter.')
@@ -100,7 +100,7 @@ resource cosmosContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/con
     }
   }
 }
-*/
+
 
 // --- 3. Backend Compute (Function App) ---
 // The serverless compute resources for our Python backend API.
@@ -155,12 +155,12 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
         }
         // Instead of a connection string, we provide the Cosmos DB endpoint.
         // The function will use its Managed Identity for authentication.
-        /*
+        
         {
           name: 'AzureResumeConnectionString'
           value: 'AccountEndpoint=${cosmosAccount.properties.documentEndpoint};'
         }
-          */
+          
       ]
       ftpsState: 'FtpsOnly'
     }
@@ -168,7 +168,7 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
   }
 }
 
-/*
+
 // --- 4. Security & Delivery (RBAC & CDN) ---
 // These resources handle secure access and global content delivery.
 @description('Grants the Function Apps Managed Identity access to Cosmos DB.')
@@ -181,7 +181,7 @@ resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
     principalType: 'ServicePrincipal'
   }
 }
-*/
+
 /*
 @description('The CDN profile and endpoint to serve the website globally.')
 resource cdnProfile 'Microsoft.Cdn/profiles@2023-05-01' = {
