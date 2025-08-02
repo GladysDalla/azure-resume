@@ -175,6 +175,10 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
 resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   scope: cosmosAccount // The role is scoped securely to only the Cosmos DB account.
   name: guid(functionApp.id, cosmosAccount.id, cosmosDbRoleDefinitionId)
+  dependsOn: [
+    functionApp
+    cosmosAccount
+  ]
   properties: {
     roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', cosmosDbRoleDefinitionId)
     principalId: functionApp.identity.principalId // The ID of the Function App's Managed Identity.
