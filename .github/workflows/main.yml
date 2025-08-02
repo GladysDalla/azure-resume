@@ -69,16 +69,27 @@ jobs:
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
-    - name: Deploy Python Function
-      uses: Azure/functions-action@v1
+    
+    - name: Create Zip Package for Deployment
+      run: |
+        cd backend
+        zip -r ../deployment.zip .
+
+    - name: Deploy Function App via Azure CLI
+      uses: azure/CLI@v1
       with:
-        app-name: ${{ env.FUNCTION_APP_NAME }}
-        package: './backend'
+        inlineScript: |
+          az functionapp deployment source config-zip \
+            --resource-group ${{ env.RESOURCE_GROUP_NAME }} \
+            --name ${{ env.FUNCTION_APP_NAME }} \
+            --src ./deployment.zip
+
     - name: Deploy Frontend to Blob Storage
       uses: azure/CLI@v1
       with:
         inlineScript: |
           az storage blob upload-batch --account-name ${{ env.STORAGE_ACCOUNT_NAME }} -d '$web' -s './frontend' --overwrite
+    
     #- name: Purge CDN Endpoint
     #  uses: azure/CLI@v1
     #  with:
