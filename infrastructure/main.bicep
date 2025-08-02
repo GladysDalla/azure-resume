@@ -25,7 +25,7 @@ param storageAccountName string
 
 var appServicePlanName = '${projectName}-plan'
 var functionAppName = '${projectName}-func'
-var cosmosAccountName = '${projectName}-db'
+//var cosmosAccountName = '${projectName}-db'
 //var cdnProfileName = '${projectName}-cdn'
 //var cdnEndpointName = projectName // CDN endpoints have different naming rules
 //var cosmosDbRoleDefinitionId = '00000000-0000-0000-0000-000000000002' // Fixed Role ID for Cosmos DB Data Contributor
@@ -48,7 +48,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
     allowBlobPublicAccess: true
   }
 }
-
+/*
 // --- 2. Azure Cosmos DB (Serverless) ---
 // The NoSQL database used to store the visitor counter.
 @description('Serverless Cosmos DB account for the visitor counter.')
@@ -100,7 +100,7 @@ resource cosmosContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/con
     }
   }
 }
-
+*/
 
 // --- 3. Backend Compute (Function App) ---
 // The serverless compute resources for our Python backend API.
@@ -155,12 +155,12 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
         }
         // Instead of a connection string, we provide the Cosmos DB endpoint.
         // The function will use its Managed Identity for authentication.
-        
+        /*
         {
           name: 'AzureResumeConnectionString'
           value: 'AccountEndpoint=${cosmosAccount.properties.documentEndpoint};'
         }
-          
+         */ 
       ]
       ftpsState: 'FtpsOnly'
     }
@@ -224,6 +224,6 @@ resource cdnEndpoint 'Microsoft.Cdn/profiles/endpoints@2023-05-01' = {
 
 //@description('The hostname of the CDN endpoint. This is the public URL for your website.')
 //output cdnEndpointHostname string = cdnEndpoint.properties.hostName
-output cosmosDbAccountId string = cosmosAccount.id
+//output cosmosDbAccountId string = cosmosAccount.id
 @description('The name of the deployed Function App.')
 output functionAppName string = functionApp.name
