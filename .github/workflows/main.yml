@@ -7,7 +7,7 @@ on:
 
 env:
   RESOURCE_GROUP_NAME: 'MyBicepRG'
-  LOCATION: 'EastUS'
+  LOCATION: 'eastus2'
   # These are placeholders for now. The Bicep deployment will create the resources.
   # We will fill these in after the first successful infrastructure deployment.
   FUNCTION_APP_NAME: 'resume4kx33andhgam6-func'
