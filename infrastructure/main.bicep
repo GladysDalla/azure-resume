@@ -28,7 +28,7 @@ var functionAppName = '${projectName}-func'
 var cosmosAccountName = '${projectName}-db'
 //var cdnProfileName = '${projectName}-cdn'
 //var cdnEndpointName = projectName // CDN endpoints have different naming rules
-var cosmosDbRoleDefinitionId = '00000000-0000-0000-0000-000000000002' // Fixed Role ID for Cosmos DB Data Contributor
+//var cosmosDbRoleDefinitionId = '00000000-0000-0000-0000-000000000002' // Fixed Role ID for Cosmos DB Data Contributor
 
 
 // === RESOURCES ===
@@ -168,7 +168,7 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
   }
 }
 
-
+/*
 // --- 4. Security & Delivery (RBAC & CDN) ---
 // These resources handle secure access and global content delivery.
 @description('Grants the Function Apps Managed Identity access to Cosmos DB.')
@@ -185,7 +185,7 @@ resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
     principalType: 'ServicePrincipal'
   }
 }
-
+*/
 /*
 @description('The CDN profile and endpoint to serve the website globally.')
 resource cdnProfile 'Microsoft.Cdn/profiles@2023-05-01' = {
@@ -224,6 +224,6 @@ resource cdnEndpoint 'Microsoft.Cdn/profiles/endpoints@2023-05-01' = {
 
 //@description('The hostname of the CDN endpoint. This is the public URL for your website.')
 //output cdnEndpointHostname string = cdnEndpoint.properties.hostName
-
+output cosmosDbAccountId string = cosmosAccount.id
 @description('The name of the deployed Function App.')
 output functionAppName string = functionApp.name

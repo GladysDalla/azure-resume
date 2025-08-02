@@ -43,6 +43,7 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
     - name: Deploy Bicep File
+      id: deployBicep
       uses: azure/arm-deploy@v1
       with:
         subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
@@ -58,7 +59,21 @@ jobs:
             --static-website \
             --index-document index.html \
             --404-document index.html
+    - name: Assign Cosmos DB Role to Function App
+      uses: azure/CLI@v1
+      with:
+        inlineScript: |
+          echo "Waiting for managed identity to propagate..."
+          sleep 30
 
+          PRINCIPAL_ID=$(az functionapp identity show --name ${{ env.FUNCTION_APP_NAME }} --resource-group ${{ env.RESOURCE_GROUP_NAME }} --query principalId -o tsv)
+          COSMOS_ID='${{ steps.deployBicep.outputs.cosmosDbAccountId }}'
+
+          az role assignment create \
+            --assignee-object-id $PRINCIPAL_ID \
+            --assignee-principal-type ServicePrincipal \
+            --role "Cosmos DB Data Contributor" \
+            --scope $COSMOS_ID
   deploy-app:
     name: Deploy Application Code
     runs-on: ubuntu-latest
