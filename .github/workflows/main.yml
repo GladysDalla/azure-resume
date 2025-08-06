@@ -13,7 +13,7 @@ env:
   FUNCTION_APP_NAME: 'resume4kx33andhgam6-func'
   STORAGE_ACCOUNT_NAME: 'bicepdemo4kx33andhgam6'
   #COSMOS_DB_ACCOUNT_NAME: 'resumeaz'
-  APP_SERVICE_PLAN_NAME: 'resume-plan-4kx33'
+  #APP_SERVICE_PLAN_NAME: 'resume-plan-4kx33'
   #CDN_PROFILE_NAME: 'YOUR_CDN_PROFILE_NAME'
   #CDN_ENDPOINT_NAME: 'YOUR_CDN_ENDPOINT_NAME'
 
@@ -50,20 +50,8 @@ jobs:
         subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         resourceGroupName: ${{ env.RESOURCE_GROUP_NAME }}
         template: ./infrastructure/main.bicep
-        parameters: >-
-          location=${{ env.LOCATION }}
-          storageAccountName=${{ env.STORAGE_ACCOUNT_NAME }}
-          appServicePlanName=${{ env.APP_SERVICE_PLAN_NAME }}
-          functionAppName=${{ env.FUNCTION_APP_NAME }}
-    - name: Enable Static Website Hosting
-      uses: azure/CLI@v1
-      with:
-        inlineScript: |
-          az storage blob service-properties update \
-            --account-name ${{ env.STORAGE_ACCOUNT_NAME }} \
-            --static-website \
-            --index-document index.html \
-            --404-document index.html
+        parameters: 'location=${{ env.LOCATION }}'
+
   deploy-app:
     name: Deploy Application Code
     runs-on: ubuntu-latest
@@ -75,19 +63,11 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
     
-    - name: Create Zip Package for Deployment
-      run: |
-        cd backend
-        zip -r ../deployment.zip .
-
-    - name: Deploy Function App via Azure CLI
-      uses: azure/CLI@v1
+    - name: Deploy Python Function
+      uses: Azure/functions-action@v1
       with:
-        inlineScript: |
-          az functionapp deployment source config-zip \
-            --resource-group ${{ env.RESOURCE_GROUP_NAME }} \
-            --name ${{ env.FUNCTION_APP_NAME }} \
-            --src ./deployment.zip
+        app-name: ${{ env.FUNCTION_APP_NAME }}
+        package: './backend'
 
     - name: Deploy Frontend to Blob Storage
       uses: azure/CLI@v1
