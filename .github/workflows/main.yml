@@ -12,7 +12,8 @@ env:
   # We will fill these in after the first successful infrastructure deployment.
   FUNCTION_APP_NAME: 'resume4kx33andhgam6-func'
   STORAGE_ACCOUNT_NAME: 'bicepdemo4kx33andhgam6'
-  COSMOS_DB_ACCOUNT_NAME: 'resumeaz'
+  #COSMOS_DB_ACCOUNT_NAME: 'resumeaz'
+  APP_SERVICE_PLAN_NAME: 'resume-plan-4kx33'
   #CDN_PROFILE_NAME: 'YOUR_CDN_PROFILE_NAME'
   #CDN_ENDPOINT_NAME: 'YOUR_CDN_ENDPOINT_NAME'
 
@@ -44,13 +45,16 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
     - name: Deploy Bicep File
-      id: deployBicep
       uses: azure/arm-deploy@v1
       with:
         subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         resourceGroupName: ${{ env.RESOURCE_GROUP_NAME }}
         template: ./infrastructure/main.bicep
-        parameters: 'location=${{ env.LOCATION }} storageAccountName=${{ env.STORAGE_ACCOUNT_NAME }}'
+        parameters: >-
+          location=${{ env.LOCATION }}
+          storageAccountName=${{ env.STORAGE_ACCOUNT_NAME }}
+          appServicePlanName=${{ env.APP_SERVICE_PLAN_NAME }}
+          functionAppName=${{ env.FUNCTION_APP_NAME }}
     - name: Enable Static Website Hosting
       uses: azure/CLI@v1
       with:
@@ -60,46 +64,6 @@ jobs:
             --static-website \
             --index-document index.html \
             --404-document index.html
-    - name: Create Cosmos DB Account
-      uses: azure/CLI@v1
-      with:
-        inlineScript: |
-          az cosmosdb create \
-            --name ${{ env.COSMOS_DB_ACCOUNT_NAME }} \
-            --resource-group ${{ env.RESOURCE_GROUP_NAME }} \
-            --locations regionName=${{ env.LOCATION }} \
-            --capabilities EnableServerless
-
-    - name: Create Cosmos DB SQL Database and Container
-      uses: azure/CLI@v1
-      with:
-        inlineScript: |
-          az cosmosdb sql database create -a ${{ env.COSMOS_DB_ACCOUNT_NAME }} -g ${{ env.RESOURCE_GROUP_NAME }} -n AzureResume
-          az cosmosdb sql container create -a ${{ env.COSMOS_DB_ACCOUNT_NAME }} -g ${{ env.RESOURCE_GROUP_NAME }} -d AzureResume -n Counter -p "/id"
-
-    - name: Assign Cosmos DB Role to Function App
-      uses: azure/CLI@v1
-      with:
-        inlineScript: |
-          echo "Waiting 30 seconds for managed identity to propagate..."
-          sleep 30
-          PRINCIPAL_ID=$(az functionapp identity show --name ${{ env.FUNCTION_APP_NAME }} --resource-group ${{ env.RESOURCE_GROUP_NAME }} --query principalId -o tsv)
-          COSMOS_ID=$(az cosmosdb show --name ${{ env.COSMOS_DB_ACCOUNT_NAME }} --resource-group ${{ env.RESOURCE_GROUP_NAME }} --query id -o tsv)
-          az role assignment create \
-            --assignee-object-id $PRINCIPAL_ID \
-            --assignee-principal-type ServicePrincipal \
-            --role "Cosmos DB Data Contributor" \
-            --scope $COSMOS_ID
-
-    - name: Update Function App Settings with Cosmos DB Endpoint
-      uses: azure/CLI@v1
-      with:
-        inlineScript: |
-          ENDPOINT=$(az cosmosdb show --name ${{ env.COSMOS_DB_ACCOUNT_NAME }} --resource-group ${{ env.RESOURCE_GROUP_NAME }} --query documentEndpoint -o tsv)
-          az functionapp config appsettings set \
-            --name ${{ env.FUNCTION_APP_NAME }} \
-            --resource-group ${{ env.RESOURCE_GROUP_NAME }} \
-            --settings "AzureResumeConnectionString=AccountEndpoint=$ENDPOINT;"
   deploy-app:
     name: Deploy Application Code
     runs-on: ubuntu-latest
