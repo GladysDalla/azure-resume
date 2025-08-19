@@ -1,4 +1,7 @@
-name: Build and Deploy Streamlined Azure Resume
+# GitHub Actions workflow for the secure, serverless Azure Resume project.
+# This pipeline automates the deployment of infrastructure and application code.
+
+name: Deploy Hybrid Azure Resume
 
 on:
   push:
@@ -6,77 +9,94 @@ on:
   workflow_dispatch:
 
 env:
-  RESOURCE_GROUP_NAME: 'MyBicepRG'
-  LOCATION: 'eastus2'
-  # These are placeholders for now. The Bicep deployment will create the resources.
-  # We will fill these in after the first successful infrastructure deployment.
-  FUNCTION_APP_NAME: 'resume4kx33andhgam6-func'
-  STORAGE_ACCOUNT_NAME: 'bicepdemo4kx33andhgam6'
-  #COSMOS_DB_ACCOUNT_NAME: 'resumeaz'
-  #APP_SERVICE_PLAN_NAME: 'resume-plan-4kx33'
-  #CDN_PROFILE_NAME: 'YOUR_CDN_PROFILE_NAME'
-  #CDN_ENDPOINT_NAME: 'YOUR_CDN_ENDPOINT_NAME'
-
+  # Set the name of the resource group you created in Azure
+  AZURE_RESOURCE_GROUP: 'AzureResumeRG'
+  # Set the Azure region for deployment
+  AZURE_LOCATION: 'eastus2'
 
 jobs:
-  build-and-test:
-    name: Build & Test Application
+  deploy-infrastructure:
+    name: 'Deploy Infrastructure'
     runs-on: ubuntu-latest
+    
+    outputs:
+      # Pass the function app name to the next job
+      functionAppName: ${{ steps.deployBicep.outputs.functionAppName }}
+
     steps:
-    - uses: actions/checkout@v3
-    - name: Setup Python 3.9
+    - name: 'Checkout Repository'
+      uses: actions/checkout@v3
+
+    - name: 'Log in to Azure'
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: 'Get Service Principal Object ID'
+      id: getSpObjectId
+      uses: azure/CLI@v1
+      with:
+        inlineScript: |
+          # Retrieve the Client ID (also known as App ID) from the credentials
+          CLIENT_ID=$(echo '${{ secrets.AZURE_CREDENTIALS }}' | jq -r .clientId)
+          
+          # Use the Client ID to look up the Service Principal's Object ID
+          SP_OBJECT_ID=$(az ad sp show --id $CLIENT_ID --query id --output tsv)
+          
+          # Set the Object ID as a job output variable
+          echo "spObjectId=$SP_OBJECT_ID" >> $GITHUB_OUTPUT
+
+    - name: 'Deploy Bicep Template'
+      id: deployBicep
+      uses: azure/arm-deploy@v1
+      with:
+        subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }} # Assumes you have this secret
+        resourceGroupName: ${{ env.AZURE_RESOURCE_GROUP }}
+        template: ./infrastructure/main.bicep
+        parameters: 'location=${{ env.AZURE_LOCATION }} githubSpObjectId=${{ steps.getSpObjectId.outputs.spObjectId }}'
+        failOnStdErr: false
+
+  deploy-application:
+    name: 'Deploy Application Code'
+    runs-on: ubuntu-latest
+    needs: deploy-infrastructure # This job runs only after the infrastructure is deployed
+
+    steps:
+    - name: 'Checkout Repository'
+      uses: actions/checkout@v3
+
+    - name: 'Log in to Azure'
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: 'Setup Python 3.9'
       uses: actions/setup-python@v4
       with:
         python-version: '3.9'
-    - name: Install dependencies and run tests
+
+    - name: 'Install Dependencies and Run Tests'
       run: |
         cd backend
         pip install -r requirements.txt
         pytest tests/
 
-  deploy-infra:
-    name: Deploy Infrastructure
-    runs-on: ubuntu-latest
-    needs: build-and-test
-    steps:
-    - uses: actions/checkout@v3
-    - name: Log in to Azure
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
-    - name: Deploy Bicep File
-      uses: azure/arm-deploy@v1
-      with:
-        subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-        resourceGroupName: ${{ env.RESOURCE_GROUP_NAME }}
-        template: ./infrastructure/main.bicep
-        parameters: 'location=${{ env.LOCATION }}'
-
-  deploy-app:
-    name: Deploy Application Code
-    runs-on: ubuntu-latest
-    needs: deploy-infra
-    steps:
-    - uses: actions/checkout@v3
-    - name: Log in to Azure
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
-    
-    - name: Deploy Python Function
+    - name: 'Deploy Backend to Function App'
       uses: Azure/functions-action@v1
       with:
-        app-name: ${{ env.FUNCTION_APP_NAME }}
+        app-name: ${{ needs.deploy-infrastructure.outputs.functionAppName }}
         package: './backend'
 
-    - name: Deploy Frontend to Blob Storage
+    - name: 'Deploy Frontend to Blob Storage'
       uses: azure/CLI@v1
       with:
         inlineScript: |
-          az storage blob upload-batch --account-name ${{ env.STORAGE_ACCOUNT_NAME }} -d '$web' -s './frontend' --overwrite
-    
-    #- name: Purge CDN Endpoint
-    #  uses: azure/CLI@v1
-    #  with:
-    #    inlineScript: |
-    #      az cdn endpoint purge --content-paths "/*" --profile-name ${{ env.CDN_PROFILE_NAME }} --name ${{ env.CDN_ENDPOINT_NAME }} --resource-group ${{ env.RESOURCE_GROUP_NAME }}
+          # The Bicep deployment outputs a unique storage account name. 
+          # We need to look it up by its tag to deploy the frontend files.
+          STORAGE_ACCOUNT=$(az storage account list --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --query "[?contains(name, 'resumesa')].name" -o tsv)
+          
+          az storage blob upload-batch \
+            --account-name $STORAGE_ACCOUNT \
+            --source ./frontend \
+            --destination '$web' \
+            --overwrite

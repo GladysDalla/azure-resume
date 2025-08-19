@@ -1,3 +1,15 @@
+# Uncomment to enable Azure Monitor OpenTelemetry
+# Ref: aka.ms/functions-azure-monitor-python 
+# azure-monitor-opentelemetry 
+
+# Azure Functions runtime
 azure-functions
+
+# Libraries for testing
 pytest
 requests
+
+# Azure SDK libraries for secure cloud integration
+azure-identity
+azure-keyvault-secrets
+azure-cosmos
