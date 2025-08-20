@@ -11,8 +11,7 @@ param githubSpObjectId string
 
 // === VARIABLES ===
 // Static names are used to ensure deployment stability.
-// IMPORTANT: If you redeploy, you may need to change these to be unique.
-var uniquePrefix = 'gresume${uniqueString(resourceGroup().id)}' // Retain for uniqueness if needed, but static is safer
+var uniquePrefix = 'gresume${uniqueString(resourceGroup().id)}'
 var logAnalyticsWorkspaceName = '${uniquePrefix}-logs'
 var applicationInsightsName = '${uniquePrefix}-insights'
 var storageAccountName = '${uniquePrefix}sa'
@@ -174,3 +173,4 @@ output functionAppName string = functionApp.name
 
 @description('The public URL of the frontend website.')
 output websiteUrl string = storageAccount.properties.primaryEndpoints.web
+
