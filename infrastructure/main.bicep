@@ -1,5 +1,5 @@
 // Bicep template for a secure, serverless Azure Resume solution.
-// Final version with environment() for cross-cloud compatibility.
+// Final version with static naming to resolve deployment validation issues.
 
 // === PARAMETERS ===
 @description('The Azure region where all resources will be deployed.')
@@ -10,6 +10,7 @@ param githubSpObjectId string
 
 
 // === VARIABLES ===
+// Static names are used to ensure deployment stability.
 var uniquePrefix = 'gresume${uniqueString(resourceGroup().id)}'
 var logAnalyticsWorkspaceName = '${uniquePrefix}-logs'
 var applicationInsightsName = '${uniquePrefix}-insights'
@@ -59,18 +60,16 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   }
 }
 
-// Blob service (default)
-resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2022-09-01' = {
+// Enable the static website feature as a separate, child resource
+resource staticWebsite 'Microsoft.Storage/storageAccounts/blobServices@2022-09-01' = {
   parent: storageAccount
   name: 'default'
-}
-
-// Static website container ($web)
-resource webContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2022-09-01' = {
-  parent: blobService
-  name: '$web'
   properties: {
-    publicAccess: 'Blob'
+    staticWebsite: {
+      enabled: true
+      indexDocument: 'index.html'
+      error404Document: 'index.html'
+    }
   }
 }
 
@@ -108,7 +107,7 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
   location: location
   kind: 'functionapp,linux'
   identity: {
-    type: 'SystemAssigned'
+    type: 'SystemAssigned' // Enable Managed Identity
   }
   properties: {
     serverFarmId: appServicePlan.id
@@ -132,6 +131,7 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
           name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
           value: applicationInsights.properties.ConnectionString
         }
+        // Reference to the Key Vault for the Cosmos DB connection string
         {
           name: 'CosmosDbConnectionString'
           value: '@Microsoft.KeyVault(VaultName=${keyVaultName};SecretName=CosmosDbConnectionString)'
@@ -149,7 +149,7 @@ resource functionAppKvAccess 'Microsoft.Authorization/roleAssignments@2022-04-01
   scope: keyVault
   name: guid(keyVault.id, functionApp.id, 'Key Vault Secrets User')
   properties: {
-    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6') // Role ID for "Key Vault Secrets User"
     principalId: functionApp.identity.principalId
     principalType: 'ServicePrincipal'
   }
@@ -160,7 +160,7 @@ resource githubSpKvAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' =
   scope: keyVault
   name: guid(keyVault.id, githubSpObjectId, 'Key Vault Secrets Officer')
   properties: {
-    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', 'b86a8fe4-44ce-4948-aee5-eccb2c1AD280')
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', 'b86a8fe4-44ce-4948-aee5-eccb2c1AD280') // Role ID for "Key Vault Secrets Officer"
     principalId: githubSpObjectId
     principalType: 'ServicePrincipal'
   }
@@ -172,4 +172,5 @@ resource githubSpKvAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' =
 output functionAppName string = functionApp.name
 
 @description('The public URL of the frontend website.')
-output websiteUrl string = 'https://${storageAccount.name}.web.core.${environment().suffixes.storage}'
+output websiteUrl string = storageAccount.properties.primaryEndpoints.web
+
