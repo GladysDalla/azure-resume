@@ -1,26 +1,24 @@
 // Bicep template for a secure, serverless Azure Resume solution.
-// This template creates a Storage Account for the frontend, a Function App for the backend,
-// Application Insights for monitoring, and a Key Vault for secrets management.
-// It leverages Managed Identities for secure, passwordless access.
+// Final version with static naming to resolve deployment validation issues.
 
 // === PARAMETERS ===
 @description('The Azure region where all resources will be deployed.')
 param location string = resourceGroup().location
-
-@description('A unique name for the project, used as a prefix for all resources.')
-param projectName string = 'resume${uniqueString(resourceGroup().id)}'
 
 @description('The object ID of the Service Principal used by GitHub Actions for deployment.')
 param githubSpObjectId string
 
 
 // === VARIABLES ===
-var logAnalyticsWorkspaceName = '${projectName}-logs'
-var applicationInsightsName = '${projectName}-insights'
-var storageAccountName = '${projectName}sa'
-var keyVaultName = '${projectName}-kv'
-var appServicePlanName = '${projectName}-plan'
-var functionAppName = '${projectName}-func'
+// Static names are used to ensure deployment stability.
+// IMPORTANT: If you redeploy, you may need to change these to be unique.
+var uniquePrefix = 'gresume${uniqueString(resourceGroup().id)}' // Retain for uniqueness if needed, but static is safer
+var logAnalyticsWorkspaceName = '${uniquePrefix}-logs'
+var applicationInsightsName = '${uniquePrefix}-insights'
+var storageAccountName = '${uniquePrefix}sa'
+var keyVaultName = '${uniquePrefix}-kv'
+var appServicePlanName = '${uniquePrefix}-plan'
+var functionAppName = '${uniquePrefix}-func'
 
 
 // === RESOURCES ===
@@ -60,6 +58,14 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
     supportsHttpsTrafficOnly: true
     accessTier: 'Hot'
     allowBlobPublicAccess: true
+  }
+}
+
+// Enable the static website feature as a separate, child resource
+resource staticWebsite 'Microsoft.Storage/storageAccounts/blobServices@2022-09-01' = {
+  parent: storageAccount
+  name: 'default'
+  properties: {
     staticWebsite: {
       enabled: true
       indexDocument: 'index.html'
