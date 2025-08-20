@@ -46,6 +46,7 @@ resource applicationInsights 'Microsoft.Insights/components@2020-02-02' = {
 
 
 // --- 2. Storage Account ---
+// The static website feature will be enabled via Azure CLI in the workflow.
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   name: storageAccountName
   location: location
@@ -57,19 +58,6 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
     supportsHttpsTrafficOnly: true
     accessTier: 'Hot'
     allowBlobPublicAccess: true
-  }
-}
-
-// Enable the static website feature as a separate, child resource
-resource staticWebsite 'Microsoft.Storage/storageAccounts/blobServices@2022-09-01' = {
-  parent: storageAccount
-  name: 'default'
-  properties: {
-    staticWebsite: {
-      enabled: true
-      indexDocument: 'index.html'
-      error404Document: 'index.html'
-    }
   }
 }
 
@@ -171,6 +159,8 @@ resource githubSpKvAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' =
 @description('The name of the deployed Function App.')
 output functionAppName string = functionApp.name
 
+@description('The name of the deployed Storage Account.')
+output storageAccountName string = storageAccount.name
+
 @description('The public URL of the frontend website.')
 output websiteUrl string = storageAccount.properties.primaryEndpoints.web
-
