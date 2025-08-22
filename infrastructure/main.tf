@@ -26,6 +26,10 @@ terraform {
 # Configure the Azure Provider
 provider "azurerm" {
   features {}
+  
+  # This line tells Terraform to skip the automatic registration of resource providers,
+  # which resolves the permission error in the pipeline.
+  skip_provider_registration = true
 }
 
 
