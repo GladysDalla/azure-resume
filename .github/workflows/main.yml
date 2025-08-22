@@ -12,7 +12,7 @@ env:
   # Set the name of the resource group you created in Azure
   AZURE_RESOURCE_GROUP: 'AzureResumeRG'
   # Set the Azure region for deployment
-  AZURE_LOCATION: 'eastus2'
+  AZURE_LOCATION: 'eastus'
 
 jobs:
   deploy-infrastructure:
