@@ -28,9 +28,21 @@ provider "azurerm" {
   features {}
   
   # This line tells Terraform to skip the automatic registration of resource providers,
-  # which resolves the permission error in the pipeline.
+  # which resolves permission errors in the pipeline.
   skip_provider_registration = true
 }
+
+
+# --- Data Sources ---
+
+# Look up the existing resource group that was created manually.
+# This avoids needing subscription-level write permissions.
+data "azurerm_resource_group" "rg" {
+  name = "AzureResumeRG-Terraform"
+}
+
+# Data source to get information about the current Azure AD user/SP
+data "azurerm_client_config" "current" {}
 
 
 # --- Resource Definitions ---
@@ -42,25 +54,19 @@ resource "random_string" "unique" {
   upper   = false
 }
 
-# 1. Main Resource Group for the application
-resource "azurerm_resource_group" "rg" {
-  name     = "AzureResumeRG-Terraform"
-  location = "eastus2"
-}
-
 # 2. Monitoring Resources (Application Insights)
 resource "azurerm_log_analytics_workspace" "logs" {
   name                = "logs-resume-${random_string.unique.result}"
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
+  location            = data.azurerm_resource_group.rg.location
+  resource_group_name = data.azurerm_resource_group.rg.name
   sku                 = "PerGB2018"
   retention_in_days   = 30
 }
 
 resource "azurerm_application_insights" "insights" {
   name                = "insights-resume-${random_string.unique.result}"
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
+  location            = data.azurerm_resource_group.rg.location
+  resource_group_name = data.azurerm_resource_group.rg.name
   workspace_id        = azurerm_log_analytics_workspace.logs.id
   application_type    = "web"
 }
@@ -68,8 +74,8 @@ resource "azurerm_application_insights" "insights" {
 # 3. Storage Account for Frontend Hosting
 resource "azurerm_storage_account" "sa" {
   name                     = "resumesa${random_string.unique.result}"
-  resource_group_name      = azurerm_resource_group.rg.name
-  location                 = azurerm_resource_group.rg.location
+  resource_group_name      = data.azurerm_resource_group.rg.name
+  location                 = data.azurerm_resource_group.rg.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
 
@@ -83,29 +89,26 @@ resource "azurerm_storage_account" "sa" {
 # 4. Key Vault for Secure Secret Storage
 resource "azurerm_key_vault" "kv" {
   name                        = "kv-resume-${random_string.unique.result}"
-  location                    = azurerm_resource_group.rg.location
-  resource_group_name         = azurerm_resource_group.rg.name
+  location                    = data.azurerm_resource_group.rg.location
+  resource_group_name         = data.azurerm_resource_group.rg.name
   tenant_id                   = data.azurerm_client_config.current.tenant_id
   sku_name                    = "standard"
   enable_rbac_authorization = true
 }
 
-# Data source to get information about the current Azure AD user/SP
-data "azurerm_client_config" "current" {}
-
 # 5. Backend Compute (Function App)
 resource "azurerm_service_plan" "plan" {
   name                = "plan-resume-${random_string.unique.result}"
-  resource_group_name = azurerm_resource_group.rg.name
-  location            = azurerm_resource_group.rg.location
+  resource_group_name = data.azurerm_resource_group.rg.name
+  location            = data.azurerm_resource_group.rg.location
   os_type             = "Linux"
   sku_name            = "Y1" # Consumption plan
 }
 
 resource "azurerm_linux_function_app" "func" {
   name                = "func-resume-${random_string.unique.result}"
-  resource_group_name = azurerm_resource_group.rg.name
-  location            = azurerm_resource_group.rg.location
+  resource_group_name = data.azurerm_resource_group.rg.name
+  location            = data.azurerm_resource_group.rg.location
   storage_account_name = azurerm_storage_account.sa.name
   service_plan_id     = azurerm_service_plan.plan.id
 
