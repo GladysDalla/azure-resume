@@ -1,80 +1,30 @@
-# GitHub Actions workflow for the secure, serverless Azure Resume project.
+# GitHub Actions workflow for the secure, serverless Azure Resume project using Terraform.
 # This pipeline automates the deployment of infrastructure and application code.
 
-name: Deploy Hybrid Azure Resume
+name: Deploy Azure Resume with Terraform
 
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
 
+# These environment variables are used by the Terraform Azure provider to authenticate.
+# The values are pulled from your GitHub secrets.
 env:
-  # Set the name of the resource group you created in Azure
-  AZURE_RESOURCE_GROUP: 'AzureResumeRG'
-  # Set the Azure region for deployment
-  AZURE_LOCATION: 'eastus2'
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  # This secret is used by Terraform to access the remote state file.
+  ARM_ACCESS_KEY: ${{ secrets.ARM_ACCESS_KEY }}
 
 jobs:
-  deploy-infrastructure:
-    name: 'Deploy Infrastructure'
+  build-and-test:
+    name: 'Build & Test Application'
     runs-on: ubuntu-latest
-    
-    outputs:
-      # Pass resource names to the next job
-      functionAppName: ${{ steps.deployBicep.outputs.functionAppName }}
-      storageAccountName: ${{ steps.deployBicep.outputs.storageAccountName }}
-
     steps:
     - name: 'Checkout Repository'
       uses: actions/checkout@v3
-
-    - name: 'Log in to Azure'
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-    - name: 'Get Service Principal Object ID'
-      id: getSpObjectId
-      uses: azure/CLI@v1
-      with:
-        inlineScript: |
-          CLIENT_ID=$(echo '${{ secrets.AZURE_CREDENTIALS }}' | jq -r .clientId)
-          SP_OBJECT_ID=$(az ad sp show --id $CLIENT_ID --query id --output tsv)
-          echo "spObjectId=$SP_OBJECT_ID" >> $GITHUB_OUTPUT
-
-    - name: 'Deploy Bicep Template'
-      id: deployBicep
-      uses: azure/arm-deploy@v1
-      with:
-        subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-        resourceGroupName: ${{ env.AZURE_RESOURCE_GROUP }}
-        template: ./infrastructure/main.bicep
-        parameters: 'location=${{ env.AZURE_LOCATION }} githubSpObjectId=${{ steps.getSpObjectId.outputs.spObjectId }}'
-        failOnStdErr: false
-
-    - name: 'Enable Static Website Hosting on Storage Account'
-      uses: azure/CLI@v1
-      with:
-        inlineScript: |
-          az storage blob service-properties update \
-            --account-name ${{ steps.deployBicep.outputs.storageAccountName }} \
-            --static-website \
-            --index-document index.html \
-            --error-document index.html
-
-  deploy-application:
-    name: 'Deploy Application Code'
-    runs-on: ubuntu-latest
-    needs: deploy-infrastructure 
-
-    steps:
-    - name: 'Checkout Repository'
-      uses: actions/checkout@v3
-
-    - name: 'Log in to Azure'
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
 
     - name: 'Setup Python 3.9'
       uses: actions/setup-python@v4
@@ -87,10 +37,61 @@ jobs:
         pip install -r requirements.txt
         pytest tests/
 
+  deploy-infrastructure:
+    name: 'Deploy Infrastructure via Terraform'
+    runs-on: ubuntu-latest
+    needs: build-and-test # Depends on the build job succeeding
+
+    outputs:
+      # We will capture Terraform outputs to use in the next job
+      function_app_name: ${{ steps.terraform_apply.outputs.function_app_name }}
+      storage_account_name: ${{ steps.terraform_apply.outputs.storage_account_name }}
+
+    steps:
+    - name: 'Checkout Repository'
+      uses: actions/checkout@v3
+
+    - name: 'Setup Terraform'
+      uses: hashicorp/setup-terraform@v2
+
+    - name: 'Terraform Init'
+      id: terraform_init
+      run: terraform init
+      working-directory: ./infrastructure
+
+    - name: 'Terraform Plan'
+      id: terraform_plan
+      run: terraform plan -out=tfplan
+      working-directory: ./infrastructure
+
+    - name: 'Terraform Apply'
+      id: terraform_apply
+      run: |
+        terraform apply -auto-approve tfplan
+        
+        # Use terraform output to set job outputs for the next stage
+        echo "function_app_name=$(terraform output -raw function_app_name)" >> $GITHUB_OUTPUT
+        echo "storage_account_name=$(terraform output -raw storage_account_name)" >> $GITHUB_OUTPUT
+      working-directory: ./infrastructure
+
+  deploy-application:
+    name: 'Deploy Application Code'
+    runs-on: ubuntu-latest
+    needs: deploy-infrastructure # Depends on the infrastructure job succeeding
+
+    steps:
+    - name: 'Checkout Repository'
+      uses: actions/checkout@v3
+
+    - name: 'Log in to Azure'
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
     - name: 'Deploy Backend to Function App'
       uses: Azure/functions-action@v1
       with:
-        app-name: ${{ needs.deploy-infrastructure.outputs.functionAppName }}
+        app-name: ${{ needs.deploy-infrastructure.outputs.function_app_name }}
         package: './backend'
 
     - name: 'Deploy Frontend to Blob Storage'
@@ -98,7 +99,7 @@ jobs:
       with:
         inlineScript: |
           az storage blob upload-batch \
-            --account-name ${{ needs.deploy-infrastructure.outputs.storageAccountName }} \
+            --account-name ${{ needs.deploy-infrastructure.outputs.storage_account_name }} \
             --source ./frontend \
             --destination '$web' \
             --overwrite
