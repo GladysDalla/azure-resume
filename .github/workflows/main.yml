@@ -12,7 +12,7 @@ env:
   # Set the name of the resource group you created in Azure
   AZURE_RESOURCE_GROUP: 'AzureResumeRG'
   # Set the Azure region for deployment
-  AZURE_LOCATION: 'eastus'
+  AZURE_LOCATION: 'eastus2'
 
 jobs:
   deploy-infrastructure:
@@ -20,8 +20,9 @@ jobs:
     runs-on: ubuntu-latest
     
     outputs:
-      # Pass the function app name to the next job
+      # Pass resource names to the next job
       functionAppName: ${{ steps.deployBicep.outputs.functionAppName }}
+      storageAccountName: ${{ steps.deployBicep.outputs.storageAccountName }}
 
     steps:
     - name: 'Checkout Repository'
@@ -37,29 +38,34 @@ jobs:
       uses: azure/CLI@v1
       with:
         inlineScript: |
-          # Retrieve the Client ID (also known as App ID) from the credentials
           CLIENT_ID=$(echo '${{ secrets.AZURE_CREDENTIALS }}' | jq -r .clientId)
-          
-          # Use the Client ID to look up the Service Principal's Object ID
           SP_OBJECT_ID=$(az ad sp show --id $CLIENT_ID --query id --output tsv)
-          
-          # Set the Object ID as a job output variable
           echo "spObjectId=$SP_OBJECT_ID" >> $GITHUB_OUTPUT
 
     - name: 'Deploy Bicep Template'
       id: deployBicep
       uses: azure/arm-deploy@v1
       with:
-        subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }} # Assumes you have this secret
+        subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         resourceGroupName: ${{ env.AZURE_RESOURCE_GROUP }}
         template: ./infrastructure/main.bicep
         parameters: 'location=${{ env.AZURE_LOCATION }} githubSpObjectId=${{ steps.getSpObjectId.outputs.spObjectId }}'
         failOnStdErr: false
 
+    - name: 'Enable Static Website Hosting on Storage Account'
+      uses: azure/CLI@v1
+      with:
+        inlineScript: |
+          az storage blob service-properties update \
+            --account-name ${{ steps.deployBicep.outputs.storageAccountName }} \
+            --static-website \
+            --index-document index.html \
+            --error-document index.html
+
   deploy-application:
     name: 'Deploy Application Code'
     runs-on: ubuntu-latest
-    needs: deploy-infrastructure # This job runs only after the infrastructure is deployed
+    needs: deploy-infrastructure 
 
     steps:
     - name: 'Checkout Repository'
@@ -91,12 +97,8 @@ jobs:
       uses: azure/CLI@v1
       with:
         inlineScript: |
-          # The Bicep deployment outputs a unique storage account name. 
-          # We need to look it up by its tag to deploy the frontend files.
-          STORAGE_ACCOUNT=$(az storage account list --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --query "[?contains(name, 'resumesa')].name" -o tsv)
-          
           az storage blob upload-batch \
-            --account-name $STORAGE_ACCOUNT \
+            --account-name ${{ needs.deploy-infrastructure.outputs.storageAccountName }} \
             --source ./frontend \
             --destination '$web' \
             --overwrite

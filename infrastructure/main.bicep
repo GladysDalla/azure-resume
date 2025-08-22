@@ -1,5 +1,5 @@
 // Bicep template for a secure, serverless Azure Resume solution.
-// Final version with static naming to resolve deployment validation issues.
+// Final version with static website configuration handled by CLI to bypass deployment bugs.
 
 // === PARAMETERS ===
 @description('The Azure region where all resources will be deployed.')
@@ -10,7 +10,6 @@ param githubSpObjectId string
 
 
 // === VARIABLES ===
-// Static names are used to ensure deployment stability.
 var uniquePrefix = 'gresume${uniqueString(resourceGroup().id)}'
 var logAnalyticsWorkspaceName = '${uniquePrefix}-logs'
 var applicationInsightsName = '${uniquePrefix}-insights'
